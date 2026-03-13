@@ -3,7 +3,7 @@
   lib,
   fetchurl,
   autoPatchelfHook,
-  wrapGAppsHook,
+  wrapGAppsHook3,
   flac,
   gnome2,
   harfbuzzFull,
@@ -126,7 +126,7 @@ let
 
     nativeBuildInputs = [
       autoPatchelfHook
-      wrapGAppsHook
+      wrapGAppsHook3
       makeWrapper
     ];
 
