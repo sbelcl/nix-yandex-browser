@@ -57,6 +57,7 @@
   vivaldi-ffmpeg-codecs,
   squashfsTools,
   wayland,
+  gst_all_1,
   pname,
   version,
   sha256,
@@ -180,6 +181,10 @@ let
       pango
       wayland
       stdenv.cc.cc.lib
+      gst_all_1.gstreamer
+      gst_all_1.gst-plugins-base
+      gst_all_1.gst-plugins-good
+      gst_all_1.gst-plugins-bad
     ];
 
     unpackPhase = ''
