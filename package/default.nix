@@ -206,6 +206,7 @@ let
       chmod +x $out/opt/yandex/${folderName}/${binName}
       makeWrapper $out/opt/yandex/${folderName}/${binName} "$out/bin/${pname}" \
         --set "LD_LIBRARY_PATH" "${lib.concatStringsSep ":" runtimeDependencies}" \
+        --set "GST_PLUGIN_SYSTEM_PATH_1_0" "${lib.makeSearchPath "lib/gstreamer-1.0" [gst_all_1.gstreamer gst_all_1.gst-plugins-base gst_all_1.gst-plugins-good gst_all_1.gst-plugins-bad]}" \
         --add-flags ${lib.escapeShellArg "--gl=egl-angle --angle=opengl --use-angle=vulkan --enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan,VaapiVideoDecoder,VaapiVideoEncoder,UseMultiPlaneFormatForHardwareVideo"}
 
       ln -s ${codecs}/lib/libffmpeg.so $out/opt/yandex/${folderName}/libffmpeg.so
@@ -243,6 +244,10 @@ let
         curl
         systemd
         codecs
+        gst_all_1.gstreamer
+        gst_all_1.gst-plugins-base
+        gst_all_1.gst-plugins-good
+        gst_all_1.gst-plugins-bad
       ]
       ++ buildInputs;
 
