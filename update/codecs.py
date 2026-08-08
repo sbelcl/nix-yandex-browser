@@ -49,10 +49,14 @@ def get_links(name):
             lambda str: re.match(r'\d*\.\d*\.\d*\.' + patch, str),
             browser_cmd_strings
         )))
-        chrver = list(filter(
+        chrver_matches = list(filter(
             lambda str: not re.match(str, version),
             versions
-        ))[0]
+        ))
+        if not chrver_matches:
+            print(f'Could not determine Chromium version for {name}; keeping current codecs')
+            return []
+        chrver = chrver_matches[0]
         chrver_no_patch = '.'.join(chrver.split('.')[0:-1])
         all_codec_sources = get_codec_sources(CODECS_JSON)
         if chrver_no_patch in all_codec_sources:
@@ -118,10 +122,14 @@ def get_snap_info(name):
             lambda str: re.match(r'\d*\.\d*\.\d*\.' + patch, str),
             browser_cmd_strings
         )))
-        chrver = list(filter(
+        chrver_matches = list(filter(
             lambda str: not re.match(str, version),
             versions
-        ))[0]
+        ))
+        if not chrver_matches:
+            print(f'Could not determine Chromium version for {name}; skipping snap codecs')
+            return None
+        chrver = chrver_matches[0]
         chrver_major = chrver.split('.')[0]
         all_codec_sources = get_codec_sources(CODECS_SNAP_JSON)
         if chrver_major in all_codec_sources:
