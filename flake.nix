@@ -76,7 +76,7 @@
             set -e
             set -x
 
-            export STRINGS_CMD=${pkgs.binutils}/bin/stings
+            export STRINGS=${pkgs.binutils}/bin/strings
             export STABLE=${packages.yandex-browser-stable}
             export BETA=${packages.yandex-browser-beta}
             ${python}/bin/python3 update/codecs.py

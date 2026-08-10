@@ -19,6 +19,55 @@ BROWSERS = {
 }
 
 
+def extract_chromium_version(name):
+    """Return the Chromium version string embedded in the Yandex binary.
+
+    Yandex used to share the last patch digit with Chromium (so filtering by
+    patch worked), but modern builds decouple them — the binary now contains
+    e.g. `148.0.7778.265` (Chromium) alongside `26.6.1.1084` (Yandex). Pick
+    any four-part version with a Chromium-scale major (>=100) that isn't the
+    Yandex version itself.
+    """
+    nix_path, folder_name = BROWSERS[name]
+    browser_cmd = f'{nix_path}/opt/yandex/{folder_name}/yandex_browser'
+    filename = "/".join([OUTPATH, f'{name}.json'])
+    with open(filename, "r") as h:
+        yandex_version = json.load(h)['version'].split('-')[0]
+    result = subprocess.run(
+        [STRINGS_CMD, browser_cmd],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f'Failed to read strings from {browser_cmd}')
+    # Chromium version shape today: MAJOR (100-999), MINOR (0), BUILD (4-5 digits),
+    # PATCH (0-4 digits). Constraining the shape rejects IPs, mDNS addresses,
+    # and placeholders like 9999.9999.9999.9999.
+    def looks_like_chromium(s):
+        parts = s.split('.')
+        try:
+            major, minor, build, patch = (int(p) for p in parts)
+        except ValueError:
+            return False
+        return (
+            100 <= major <= 999
+            and minor == 0
+            and 1000 <= build <= 99999
+            and 0 <= patch <= 9999
+        )
+    candidates = sorted({
+        s for s in result.stdout.split('\n')
+        if re.fullmatch(r'\d+\.\d+\.\d+\.\d+', s)
+        and s != yandex_version
+        and looks_like_chromium(s)
+    })
+    if not candidates:
+        raise RuntimeError(
+            f'No Chromium-shaped version string found in {browser_cmd}'
+        )
+    return candidates[-1]
+
+
 def get_codec_sources(url):
     response = requests.get(url)
     if response.ok:
@@ -29,41 +78,12 @@ def get_codec_sources(url):
 
 
 def get_links(name):
-    nix_path, folder_name = BROWSERS[name]
-    browser_cmd = f'{nix_path}/opt/yandex/{folder_name}/yandex_browser'
-    filename = "/".join([OUTPATH, f'{name}.json'])
-    version = None
-    with open(filename, "r") as h:
-        text = h.read()
-        json_data = json.loads(text)
-        version = json_data['version']
-    patch = version.split('-')[0].split('.')[-1]
-    result = subprocess.run(
-        [STRINGS_CMD, browser_cmd],
-        capture_output=True,
-        text=True
-    )
-    if result.returncode == 0:
-        browser_cmd_strings = result.stdout.strip().split('\n')
-        versions = list(set(filter(
-            lambda str: re.match(r'\d*\.\d*\.\d*\.' + patch, str),
-            browser_cmd_strings
-        )))
-        chrver_matches = list(filter(
-            lambda str: not re.match(str, version),
-            versions
-        ))
-        if not chrver_matches:
-            print(f'Could not determine Chromium version for {name}; keeping current codecs')
-            return []
-        chrver = chrver_matches[0]
-        chrver_no_patch = '.'.join(chrver.split('.')[0:-1])
-        all_codec_sources = get_codec_sources(CODECS_JSON)
-        if chrver_no_patch in all_codec_sources:
-            return all_codec_sources[chrver_no_patch]
-        return []
-    else:
-        print(f'Failed to read file {browser_cmd}')
+    chrver = extract_chromium_version(name)
+    chrver_no_patch = '.'.join(chrver.split('.')[0:-1])
+    all_codec_sources = get_codec_sources(CODECS_JSON)
+    if chrver_no_patch in all_codec_sources:
+        return all_codec_sources[chrver_no_patch]
+    return []
 
 
 def prefetch_url(url):
@@ -102,46 +122,17 @@ def process_links(url_list):
 
 
 def get_snap_info(name):
-    nix_path, folder_name = BROWSERS[name]
-    browser_cmd = f'{nix_path}/opt/yandex/{folder_name}/yandex_browser'
-    filename = "/".join([OUTPATH, f'{name}.json'])
-    version = None
-    with open(filename, "r") as h:
-        text = h.read()
-        json_data = json.loads(text)
-        version = json_data['version']
-    patch = version.split('-')[0].split('.')[-1]
-    result = subprocess.run(
-        [STRINGS_CMD, browser_cmd],
-        capture_output=True,
-        text=True
-    )
-    if result.returncode == 0:
-        browser_cmd_strings = result.stdout.strip().split('\n')
-        versions = list(set(filter(
-            lambda str: re.match(r'\d*\.\d*\.\d*\.' + patch, str),
-            browser_cmd_strings
-        )))
-        chrver_matches = list(filter(
-            lambda str: not re.match(str, version),
-            versions
-        ))
-        if not chrver_matches:
-            print(f'Could not determine Chromium version for {name}; skipping snap codecs')
-            return None
-        chrver = chrver_matches[0]
-        chrver_major = chrver.split('.')[0]
-        all_codec_sources = get_codec_sources(CODECS_SNAP_JSON)
-        if chrver_major in all_codec_sources:
-            data = all_codec_sources[chrver_major]
-            return {
-                'version': chrver,
-                'url': data['url'],
-                'path': data['path']
-            }
-        return None
-    else:
-        print(f'Failed to read file {browser_cmd}')
+    chrver = extract_chromium_version(name)
+    chrver_major = chrver.split('.')[0]
+    all_codec_sources = get_codec_sources(CODECS_SNAP_JSON)
+    if chrver_major in all_codec_sources:
+        data = all_codec_sources[chrver_major]
+        return {
+            'version': chrver,
+            'url': data['url'],
+            'path': data['path']
+        }
+    return None
 
 
 def process_snap(data):
