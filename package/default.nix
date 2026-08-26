@@ -223,7 +223,7 @@ let
       # Wrap the executable instead
       chmod +x $out/opt/yandex/${folderName}/${binName}
       makeWrapper $out/opt/yandex/${folderName}/${binName} "$out/bin/${pname}" \
-        --set "LD_LIBRARY_PATH" "${lib.concatStringsSep ":" runtimeDependencies}" \
+        --set "LD_LIBRARY_PATH" "${lib.makeLibraryPath runtimeDependencies}" \
         --set "GST_PLUGIN_SYSTEM_PATH_1_0" "${lib.makeSearchPath "lib/gstreamer-1.0" gstPlugins}"
 
       # No --add-flags here on purpose. This used to force
