@@ -1,1 +1,9 @@
 /.direnv/
+# nix build symlink
+/result
+# The updaters now import a local module (update/fetch.py), so running them
+# leaves bytecode behind. It has to stay ignored: the workflow decides
+# whether to commit with `[ -n "$(git status -s)" ]`, and an untracked
+# __pycache__ would make that true on every run, sending it into a
+# `git commit` with nothing staged — which exits 1 and fails the job.
+__pycache__/

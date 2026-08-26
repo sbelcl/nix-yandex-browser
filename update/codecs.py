@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import requests
+import fetch
 import subprocess
 import json
 import re
@@ -69,7 +69,7 @@ def extract_chromium_version(name):
 
 
 def get_codec_sources(url):
-    response = requests.get(url)
+    response = fetch.get(url)
     if response.ok:
         content = response.text
         return json.loads(content)

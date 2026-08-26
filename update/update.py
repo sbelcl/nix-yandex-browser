@@ -2,7 +2,7 @@
 
 import os
 import re
-import requests
+import fetch
 import subprocess
 import json
 from bs4 import BeautifulSoup
@@ -29,7 +29,7 @@ def prefetch_url(url):
 
 def process_url(url_name):
     _url = urls[url_name]
-    response = requests.get(_url)
+    response = fetch.get(_url)
     if response.ok:
         json_file = getJson(url_name)
         with open(json_file, 'r') as f:
