@@ -65,6 +65,28 @@
 }:
 
 let
+  # GStreamer plugin path, used for both GST_PLUGIN_SYSTEM_PATH_1_0 and the
+  # library path below.
+  #
+  # `.out` on gstreamer is load-bearing. Its outputs are
+  # [ "bin" "out" "dev" "debug" ] — "bin" first, so the bare attribute
+  # resolves to the binaries output, which has no lib/gstreamer-1.0
+  # directory at all. That put a non-existent path at the head of the plugin
+  # search path and left libgstcoreelements.so (queue, tee, typefind,
+  # capsfilter — elements essentially every pipeline needs) undiscoverable.
+  #
+  # ugly and libav were missing entirely. libav is the one that carries the
+  # avdec_* decoders, so without it GStreamer can register a pipeline and
+  # then fail to decode anything in it.
+  gstPlugins = [
+    gst_all_1.gstreamer.out
+    gst_all_1.gst-plugins-base
+    gst_all_1.gst-plugins-good
+    gst_all_1.gst-plugins-bad
+    gst_all_1.gst-plugins-ugly
+    gst_all_1.gst-libav
+  ];
+
   desktopName = if pname == "yandex-browser-stable" then "yandex-browser" else pname;
   folderName = if pname == "yandex-browser-stable" then "browser" else "browser-beta";
   binName = desktopName;
@@ -181,11 +203,7 @@ let
       pango
       wayland
       stdenv.cc.cc.lib
-      gst_all_1.gstreamer
-      gst_all_1.gst-plugins-base
-      gst_all_1.gst-plugins-good
-      gst_all_1.gst-plugins-bad
-    ];
+    ] ++ gstPlugins;
 
     unpackPhase = ''
       mkdir $TMP/ya/ $out/bin/ -p
@@ -206,8 +224,23 @@ let
       chmod +x $out/opt/yandex/${folderName}/${binName}
       makeWrapper $out/opt/yandex/${folderName}/${binName} "$out/bin/${pname}" \
         --set "LD_LIBRARY_PATH" "${lib.concatStringsSep ":" runtimeDependencies}" \
-        --set "GST_PLUGIN_SYSTEM_PATH_1_0" "${lib.makeSearchPath "lib/gstreamer-1.0" [gst_all_1.gstreamer gst_all_1.gst-plugins-base gst_all_1.gst-plugins-good gst_all_1.gst-plugins-bad]}" \
-        --add-flags ${lib.escapeShellArg "--gl=egl-angle --angle=opengl --use-angle=vulkan --enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan --disable-features=UseMultiPlaneFormatForHardwareVideo"}
+        --set "GST_PLUGIN_SYSTEM_PATH_1_0" "${lib.makeSearchPath "lib/gstreamer-1.0" gstPlugins}"
+
+      # No --add-flags here on purpose. This used to force
+      #   --gl=egl-angle --angle=opengl --use-angle=vulkan
+      #   --enable-features=Vulkan,VulkanFromANGLE,DefaultANGLEVulkan
+      #   --disable-features=UseMultiPlaneFormatForHardwareVideo
+      # which is self-contradictory (--angle=opengl is not a Chromium switch
+      # at all, and --use-angle=vulkan fights the ANGLE backend a caller
+      # asks for) and cannot be overridden by a caller: --enable-features
+      # from here and from the command line do not merge, and a consumer
+      # passing --use-angle=gl was still left with the Vulkan ANGLE features
+      # forced on.
+      #
+      # The Arch package ships no flags and works on the same hardware, so
+      # the vendor defaults are fine. GPU flags are host-specific (driver,
+      # compositor, hybrid graphics) and belong in the caller's .desktop
+      # entry, not baked into every install of this package.
 
       ln -s ${codecs}/lib/libffmpeg.so $out/opt/yandex/${folderName}/libffmpeg.so
       # sed -i '68,74 s/^/#/' $out/opt/yandex/${folderName}/${binName}
@@ -244,10 +277,6 @@ let
         curl
         systemd
         codecs
-        gst_all_1.gstreamer
-        gst_all_1.gst-plugins-base
-        gst_all_1.gst-plugins-good
-        gst_all_1.gst-plugins-bad
       ]
       ++ buildInputs;
 
