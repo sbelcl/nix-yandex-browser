@@ -5,12 +5,11 @@
   autoPatchelfHook,
   wrapGAppsHook3,
   flac,
-  gnome2,
   harfbuzzFull,
   nss,
   snappy,
   xdg-utils,
-  xorg,
+  libxkbfile,
   alsa-lib,
   atk,
   cairo,
@@ -159,7 +158,7 @@ let
       nss
       snappy
       xdg-utils
-      xorg.libxkbfile
+      libxkbfile
       alsa-lib
       at-spi2-atk
       at-spi2-core
@@ -173,7 +172,6 @@ let
       freetype
       gdk-pixbuf
       glib
-      gnome2.GConf
       gtk3
       libGL
       libGLU
